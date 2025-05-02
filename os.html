@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple OS Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Use Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a1a; /* Dark background */
+            color: #e0e0e0; /* Light text */
+        }
+        /* Style for the terminal output */
+        #output {
+            white-space: pre-wrap; /* Preserve whitespace and wrap lines */
+            word-wrap: break-word; /* Break long words */
+            height: 400px; /* Fixed height */
+            overflow-y: auto; /* Add scrollbar if needed */
+            border: 1px solid #444; /* Subtle border */
+            background-color: #222; /* Slightly lighter dark background */
+        }
+        /* Style for the input prompt */
+        #input-line span {
+            color: #60a5fa; /* Blue prompt color */
+        }
+        /* Style for the input field */
+        #commandInput {
+            background-color: transparent;
+            border: none;
+            outline: none;
+            color: #e0e0e0;
+            width: calc(100% - 30px); /* Adjust width based on prompt */
+            caret-color: #60a5fa; /* Cursor color */
+        }
+        /* Style for the scrollbar */
+        #output::-webkit-scrollbar {
+            width: 8px;
+        }
+        #output::-webkit-scrollbar-track {
+            background: #333;
+            border-radius: 4px;
+        }
+        #output::-webkit-scrollbar-thumb {
+            background-color: #555;
+            border-radius: 4px;
+            border: 2px solid #333;
+        }
+        #output::-webkit-scrollbar-thumb:hover {
+            background-color: #777;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto bg-gray-800 rounded-lg shadow-xl p-6">
+        <h1 class="text-2xl font-bold mb-4 text-center text-blue-400">SimOS v0.1</h1>
+
+        <div id="output" class="p-3 rounded-md text-sm mb-4 font-mono"></div>
+
+        <div id="input-line" class="flex items-center font-mono text-sm">
+            <span class="mr-1 font-bold">&gt;</span>
+            <input type="text" id="commandInput" class="flex-grow p-1" autofocus autocomplete="off">
+        </div>
+    </div>
+
+    <script>
+        // Get DOM elements
+        const outputDiv = document.getElementById('output');
+        const commandInput = document.getElementById('commandInput');
+        const inputLine = document.getElementById('input-line');
+
+        // --- Simulated OS State ---
+        let history = []; // Command history
+        let historyIndex = -1;
+        let mockProcesses = [ // Simple list of mock processes
+            { pid: 1, name: 'kernel_task', status: 'Running' },
+            { pid: 101, name: 'shell', status: 'Running' },
+        ];
+
+        // --- Helper Functions ---
+
+        // Function to print a line to the output
+        function printLine(text) {
+            outputDiv.innerHTML += text + '\n';
+            // Scroll to the bottom
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+
+        // Function to print the prompt and user input
+        function printInputLine(command) {
+            printLine(`<span class="text-blue-400 font-bold">&gt;</span> ${escapeHtml(command)}`);
+        }
+
+        // Basic HTML escaping to prevent rendering HTML tags
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        // --- Command Handling ---
+
+        // Function to handle known commands
+        function handleCommand(command) {
+            const parts = command.trim().split(' ');
+            const cmd = parts[0].toLowerCase();
+            const args = parts.slice(1);
+
+            switch (cmd) {
+                case 'help':
+                    printLine('Available commands:');
+                    printLine('  help         - Show this help message');
+                    printLine('  echo [text]  - Print text to the screen');
+                    printLine('  clear        - Clear the screen');
+                    printLine('  date         - Display the current date and time');
+                    printLine('  ps           - List mock processes');
+                    printLine('  info         - Display system information');
+                    printLine('  history      - Show command history');
+                    break;
+                case 'echo':
+                    printLine(args.join(' '));
+                    break;
+                case 'clear':
+                    outputDiv.innerHTML = '';
+                    break;
+                case 'date':
+                    printLine(new Date().toString());
+                    break;
+                case 'ps':
+                    printLine('PID\tSTATUS\t\tCOMMAND');
+                    printLine('------------------------------------');
+                    mockProcesses.forEach(p => {
+                        // Basic padding for alignment
+                        const statusPadded = p.status.padEnd(14, ' ');
+                        printLine(`${p.pid}\t${statusPadded}${p.name}`);
+                    });
+                    break;
+                case 'info':
+                    printLine('SimOS v0.1 - Simple OS Simulation');
+                    printLine(`Running in: ${navigator.userAgent}`);
+                    printLine(`Screen Resolution: ${window.screen.width}x${window.screen.height}`);
+                    break;
+                case 'history':
+                    if (history.length === 0) {
+                        printLine('No commands in history.');
+                    } else {
+                        history.forEach((h, index) => {
+                            printLine(` ${index + 1}  ${h}`);
+                        });
+                    }
+                    break;
+                case '': // Handle empty command
+                    break; // Do nothing
+                default:
+                    printLine(`Error: Command not found: ${escapeHtml(cmd)}`);
+                    break;
+            }
+        }
+
+        // --- Event Listeners ---
+
+        // Handle Enter key press in the input field
+        commandInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                const command = commandInput.value;
+
+                // Add command to history if it's not empty
+                if (command.trim() !== '') {
+                    history.push(command);
+                    historyIndex = history.length; // Reset history index
+                }
+
+                printInputLine(command); // Display the command entered
+                handleCommand(command);  // Process the command
+                commandInput.value = ''; // Clear the input field
+
+                // Prevent the default Enter key behavior (like submitting a form)
+                event.preventDefault();
+            } else if (event.key === 'ArrowUp') {
+                // Navigate command history up
+                if (history.length > 0 && historyIndex > 0) {
+                    historyIndex--;
+                    commandInput.value = history[historyIndex];
+                    // Move cursor to the end
+                    setTimeout(() => commandInput.setSelectionRange(commandInput.value.length, commandInput.value.length), 0);
+                }
+                event.preventDefault();
+            } else if (event.key === 'ArrowDown') {
+                // Navigate command history down
+                if (history.length > 0 && historyIndex < history.length - 1) {
+                    historyIndex++;
+                    commandInput.value = history[historyIndex];
+                    // Move cursor to the end
+                    setTimeout(() => commandInput.setSelectionRange(commandInput.value.length, commandInput.value.length), 0);
+                } else if (historyIndex === history.length - 1) {
+                    // If at the end of history, clear the input
+                    historyIndex = history.length;
+                    commandInput.value = '';
+                }
+                event.preventDefault();
+            }
+        });
+
+        // Focus the input field when clicking anywhere in the terminal area
+        document.querySelector('.max-w-4xl').addEventListener('click', () => {
+            commandInput.focus();
+        });
+
+        // --- Initialisation ---
+        function init() {
+            printLine('Welcome to SimOS v0.1!');
+            printLine('Type "help" for a list of commands.');
+            printLine(''); // Add an empty line for spacing
+            commandInput.focus(); // Ensure input is focused on load
+        }
+
+        // Run initialisation when the page loads
+        window.onload = init;
+
+    </script>
+</body>
+</html>
